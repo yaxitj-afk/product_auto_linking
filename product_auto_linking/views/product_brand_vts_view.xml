@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="product_brand__vts_form_view" model="ir.ui.view">
+        <field name="name">product.brand.form.view</field>
+        <field name="model">product.brand.vts</field>
+        <field name="arch" type="xml">
+            <form string="Brand">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" placeholder="Brand Name" nolabel="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="short_description"/>
+                    </group>
+                    <notebook>
+                        <page string="Details">
+                            <group>
+                                <field name="detailed_description"/>
+                            </group>
+                        </page>
+                        <page string="Products">
+                            <field name="product_tmpl_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="default_code"/>
+                                    <field name="list_price"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
