@@ -11,16 +11,17 @@
     'description': "",
 
     # Dependencies
-    'depends': ['base','stock','sale','mrp'],
+    'depends': ['stock','sale','mrp'],
 
     # Views
     'data': [
+        'data/product_rule.xml',
         'security/ir.model.access.csv',
         'views/product_template_view.xml',
         'views/product_brand_vts_view.xml',
         'views/res_config_setting_view.xml',
         'views/product_log_view.xml',
-        # 'data/sequence.xml',
+        'views/product_accessories_vts_view.xml',
     ],
 
     # Odoo Store Specific

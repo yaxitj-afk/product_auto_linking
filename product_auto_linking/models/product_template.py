@@ -1,6 +1,5 @@
 from odoo import models, api, fields
-from collections import defaultdict
-
+import json
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
@@ -10,47 +9,29 @@ class ProductTemplate(models.Model):
         help="Name of the brand"
     )
 
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
-        # records._compute_alternative_products()
-        records._compute_product_accessories()
-        return records
+    def create_product_logs(self, log,relation_type,operation_type,product,related_product,message):
+        self.env['product.log.line.vts'].sudo().create_log_line(log,relation_type,operation_type,product,related_product,message)
 
-    def write(self, vals):
-        res = super().write(vals)
-
-        # if not self.env.context.get('skip_alternative_sync'):
-        #     if any(field in vals for field in ['list_price','categ_id','attribute_line_ids',]):
-        #         self._compute_alternative_products()
-
-        if not self.env.context.get('skip_accessory_sync'):
-            if any(field in vals for field in ['categ_id','attribute_line_ids','product_brand_id','list_price']):
-                self._compute_product_accessories()
-        return res
-
-# ==================================================================================================================
-
-
-    def create_product_logs(self, log,operation_type,product,related_product,message):
-        self.env['product.log.line.vts'].sudo().create_log_line(log,'alternative',operation_type,product,related_product,message)
-
+    @api.constrains('list_price', 'categ_id','attribute_line_ids')
     def _compute_alternative_products(self):
-        rule = self.env['ir.config_parameter'].sudo().get_param(
-            'product_auto_linking.alternative_product_rule', default='category'
+        alternate_rule = self.env['ir.config_parameter'].sudo().get_param(
+            'product_auto_linking.alternative_product_rule_ids', '[]'
         )
+        alternate_rule_ids = json.loads(alternate_rule)
+        alternate_rule_records = self.env['product.rule.vts'].browse(alternate_rule_ids)
+        alternate_rule_codes = alternate_rule_records.mapped('code')
 
         for product in self:
             old_alternatives = product.alternative_product_ids
-
+            # Default Domain
             domain = [
                 ('id', '!=', product.id),
                 ('categ_id', '=', product.categ_id.id),
                 ('sale_ok', '=', True),
                 ('active', '=', True),
             ]
-
-            if rule == 'price':
+            # Price
+            if 'price' in alternate_rule_codes:
                 min_price = product.list_price * 0.9
                 max_price = product.list_price * 1.1
                 domain += [
@@ -58,20 +39,33 @@ class ProductTemplate(models.Model):
                     ('list_price', '<=', max_price)
                 ]
 
-            elif rule == 'brand':
+            #Brand
+            if 'brand' in alternate_rule_codes:
                 if product.product_brand_id:
                     domain.append(('product_brand_id', '=', product.product_brand_id.id))
 
-            elif rule == 'attributes':
+            #Attributes
+            if 'attributes' in alternate_rule_codes:
                 attr_value_ids = product.attribute_line_ids.mapped('value_ids').ids
                 if attr_value_ids:
                     domain.append(('attribute_line_ids.value_ids', 'in', attr_value_ids))
 
+            #Stock
+            if 'in_stock' in alternate_rule_codes:
+                domain.append(('qty_available', '>', 0))
+
+            # TAGS
+            if 'tags' in alternate_rule_codes:
+                if product.product_tag_ids:
+                    domain.append(('product_tag_ids', 'in', product.product_tag_ids.ids))
+
             alternative_products = self.env['product.template'].search(domain)
 
-            # alternative_products = alternative_products.filtered(
-            #     lambda p: any(v.qty_available > 0 for v in p.product_variant_ids)
-            # )
+            if not alternative_products:
+                product.with_context(skip_alternative_sync=True).write({
+                    'alternative_product_ids': [(5, 0, 0)]
+                })
+                continue
 
             alternative_products = alternative_products.sorted(
                 key=lambda p: abs((p.list_price) - (product.list_price))
@@ -82,116 +76,196 @@ class ProductTemplate(models.Model):
             })
 
             new_alternatives = product.alternative_product_ids
+            if new_alternatives:
+                log_id = self.env['product.log.vts'].generate_log(relation_type='alternative', operation_type='update',
+                                                              product=product,message='Alternative products updated')
+                if old_alternatives:
+                    added = new_alternatives - old_alternatives
+                    removed = old_alternatives - new_alternatives
+                else:
+                    added = new_alternatives
+                    removed = []
 
-            added = new_alternatives - old_alternatives
-            removed = old_alternatives - new_alternatives
+                # ✅ MAIN PRODUCT LOG
+                if added or removed:
+                    for alt in added:
+                        self.create_product_logs(log_id,relation_type='alternative',operation_type='add',product=product,related_product=alt,message=f"Product {alt.display_name} added as alternative product")
 
-            # ✅ MAIN PRODUCT LOG
-            log_id = self.env['product.log.vts'].generate_log(relation_type='alternative',operation_type='update',product=product,message='Alternative products updated')
+                    for alt in removed:
+                        self.create_product_logs(log_id,relation_type='alternative',operation_type='remove',product=product,related_product=alt,message=f"Product {alt.display_name} removed from alternative product")
 
-            if added or removed:
+                # ✅ REVERSE SYNC + LOG
                 for alt in added:
-                    self.create_product_logs(log_id,operation_type='add',product=product,related_product=alt,message=f"Product {alt.display_name} added as alternative product")
+                    if product.id not in alt.alternative_product_ids.ids:
+                        alt.with_context(skip_alternative_sync=True).write({
+                            'alternative_product_ids': [(4, product.id)]
+                        })
+                        self.create_product_logs(log_id,relation_type='alternative',operation_type='add',product=alt,related_product=product,message=f"Product {product.display_name} added as alternative product")
+
 
                 for alt in removed:
-                    self.create_product_logs(log_id,operation_type='remove',product=product,related_product=alt,message=f"Product {alt.display_name} removed from alternative product")
+                    if product.id in alt.alternative_product_ids.ids:
+                        remaining_ids = alt.alternative_product_ids.ids.copy()
+                        remaining_ids.remove(product.id)
 
-            # ✅ REVERSE SYNC + LOG
-            for alt in added:
-                if product.id not in alt.alternative_product_ids.ids:
-                    alt.with_context(skip_alternative_sync=True).write({
-                        'alternative_product_ids': [(4, product.id)]
-                    })
-                    self.create_product_logs(log_id,operation_type='add',product=alt,related_product=product,message=f"Product {product.display_name} added as alternative product")
+                        alt.with_context(skip_alternative_sync=True).write({
+                            'alternative_product_ids': [(6, 0, remaining_ids)]
+                        })
+                        self.create_product_logs(log_id,relation_type='alternative',operation_type='remove',product=alt,related_product=product,message=f"Product {product.display_name} removed from alternative product")
 
-
-            for alt in removed:
-                if product.id in alt.alternative_product_ids.ids:
-                    remaining_ids = alt.alternative_product_ids.ids.copy()
-                    remaining_ids.remove(product.id)
-
-                    alt.with_context(skip_alternative_sync=True).write({
-                        'alternative_product_ids': [(6, 0, remaining_ids)]
-                    })
-                    self.create_product_logs(log_id,operation_type='remove',product=alt,related_product=product,message=f"Product {product.display_name} removed from alternative product")
 
     # ----------------------------------------------------------------------------------------------------------
     #                         Product Accessories Code
     # ----------------------------------------------------------------------------------------------------------
 
+    def _apply_accessory_rules(self, product, rules, domain):
+        """
+        Apply dynamic accessory rules on domain
+        """
+        for rule in rules:
+
+            if rule.code == 'brand':
+                if product.product_brand_id:
+                    domain.append(('product_brand_id', '=', product.product_brand_id.id))
+
+            if rule.code == 'tags':
+                if product.product_tag_ids:
+                    domain.append(('product_tag_ids', 'in', product.product_tag_ids.ids))
+
+            if rule.code == 'in_stock':
+                domain.append(('qty_available', '>', 0))
+
+            if rule.code == 'bom':
+                boms = self.env['mrp.bom'].search([
+                    ('product_tmpl_id', '=', product.id),
+                ])
+                accessory_ids = boms.mapped('bom_line_ids.product_tmpl_id').ids
+
+                if accessory_ids:
+                    domain.append(('id', 'in', accessory_ids))
+
+        return domain
+
+    @api.constrains('list_price', 'categ_id', 'attribute_line_ids')
     def _compute_product_accessories(self):
-
-        SaleLine = self.env['sale.order.line']
-        BomLine = self.env['mrp.bom.line']
-
-        rule = self.env['ir.config_parameter'].sudo().get_param(
-            'product_auto_linking.accessory_product_rule'
-        )
+        accessory_rule_obj = self.env['product.accessory.vts']
+        accessory_rules = accessory_rule_obj.search([])
 
         for product in self:
+            matched_accessory_rule = False
 
-            score_map = defaultdict(int)
+            for rule in accessory_rules:
+                if rule.category_id.id == product.categ_id.id:
+                    matched_accessory_rule = rule
+                    break
 
-            # 1. BOM RULE
-            if rule == 'bom':
+            if not matched_accessory_rule:
+                continue
 
-                bom_lines = BomLine.search([
-                    ('product_tmpl_id', '=', product.id)
-                ])
+            accessory_category_ids = matched_accessory_rule.accessory_category_ids.ids
 
-                for line in bom_lines:
-                    acc = line.product_id.product_tmpl_id
-                    if acc and acc.id != product.id:
-                        score_map[acc.id] += 100
+            if not accessory_category_ids:
+                product.with_context(skip_accessory_sync=True).write({
+                    'accessory_product_ids': [(5, 0, 0)]
+                })
+                continue
 
-            # 2. SALES RULE
-            if rule == 'sales':
+            domain = [
+                ('categ_id', 'in', accessory_category_ids),
+                ('sale_ok', '=', True),
+                ('active', '=', True),
+                ('id', '!=', product.id)
+            ]
 
-                sale_lines = SaleLine.search([
-                    ('product_template_id', '=', product.id)
-                ])
+            domain = self._apply_accessory_rules(product,matched_accessory_rule.accessory_product_rule_ids,domain)
 
-                orders = sale_lines.mapped('order_id')
+            accessory_products = self.env['product.template'].search(domain)
+            accessory_product_variants = accessory_products.mapped('product_variant_id').exists()
+            old_accessories = product.accessory_product_ids.product_tmpl_id.ids
 
-                if orders:
-                    co_lines = SaleLine.search([
-                        ('order_id', 'in', orders.ids)
-                    ])
+            product.with_context(skip_accessory_sync=True).write({
+                'accessory_product_ids': [(6, 0, accessory_product_variants.ids)]
+            })
 
-                    for line in co_lines:
-                        acc = line.product_template_id
-                        if acc and acc.id != product.id:
-                            score_map[acc.id] += 50
+            new_accessories = accessory_products.ids
+            product_added = list(set(new_accessories) - set(old_accessories))
+            product_removed = list(set(old_accessories) - set(new_accessories))
+            if product_added or product_removed:
+                log_id = self.env['product.log.vts'].generate_log(relation_type='accessory',operation_type='update',product=product,
+                    message='Accessory products updated')
 
-            # 3. TAGS RULE
-            if rule == 'attributes':
+                for acc in self.env['product.template'].browse(product_added):
+                    self.create_product_logs(log_id,'accessory','add',product,acc,
+                        message=f"Product {acc.display_name} added as accessory product")
 
-                tag_ids = product.attribute_line_ids.mapped('value_ids.id')
-                if tag_ids:
-                    tag_products = self.search([
-                        ('attribute_line_ids.value_ids', 'in', tag_ids),
-                        ('id', '!=', product.id),
-                    ])
+                for acc in self.env['product.template'].browse(product_removed):
+                    self.create_product_logs(log_id,'accessory','remove',product,acc,
+                        message=f"Product {acc.display_name} removed from accessory product")
 
-                    for acc in tag_products:
-                        score_map[acc.id] += 20
 
-            # 4. CATEGORY RULE
-            if rule == 'category':
+    # def _cron_auto_update_alt_acc_of_product(self):
+    #     for rec in self:
+    #         rec._compute_alternative_products()
+    #         rec._compute_product_accessories()
 
-                category_products = self.search([
-                    ('categ_id', '=', product.categ_id.id),
-                    ('id', '!=', product.id),
-                    ('sale_ok', '=', True),
-                    ('active', '=', True),
-                ])
 
-                for acc in category_products:
-                    score_map[acc.id] += 10
-
-            # FINAL RESULT
-            sorted_products = sorted(score_map.items(),key=lambda x: x[1],reverse=True)[:10]
-            accessory_products = self.browse([pid for pid, score in sorted_products])
-
-            # WRITE RESULT
-            product.with_context(skip_accessory_sync=True).write({'accessory_product_ids': [(6, 0, accessory_products.ids)]})
+    # def _compute_product_accessories(self):
+    #     accessory_rule_obj = self.env['product.accessory.vts']
+    #     accessory_rules = accessory_rule_obj.search([])
+    #
+    #     for product in self:
+    #         matched_accessory_rule = False
+    #
+    #         for rule in accessory_rules:
+    #             if rule.category_id.id == product.categ_id.id:
+    #                 matched_accessory_rule = rule
+    #                 break
+    #
+    #         if not matched_accessory_rule:
+    #             continue
+    #
+    #         accessory_category_ids = matched_accessory_rule.accessory_category_ids.ids
+    #
+    #         if not accessory_category_ids:
+    #             product.with_context(skip_accessory_sync=True).write({
+    #                 'accessory_product_ids': [(5, 0, 0)]
+    #             })
+    #             continue
+    #
+    #         accessory_products = self.env['product.template'].search([
+    #             ('categ_id', 'in', accessory_category_ids),
+    #             ('sale_ok', '=', True),
+    #             ('active', '=', True),
+    #             ('id', '!=', product.id)
+    #         ])
+    #
+    #         accessory_product_variants = accessory_products.mapped('product_variant_id').exists()
+    #         old_accessories = product.accessory_product_ids.ids
+    #
+    #         product.with_context(skip_accessory_sync=True).write({
+    #             'accessory_product_ids': [(6, 0, accessory_product_variants.ids)]
+    #         })
+    #
+    #         new_accessories = accessory_products.ids
+    #
+    #         added = new_accessories - old_accessories
+    #         removed = old_accessories - new_accessories
+    #
+    #         log_id = self.env['product.log.vts'].generate_log(relation_type='accessory',operation_type='update',
+    #             product=product,message='Accessory products updated')
+    #
+    #         for acc in added:
+    #             self.create_product_logs(log_id,relation_type='accessory',operation_type='add',product=product,related_product=acc,
+    #                                      message=f"Product {acc.display_name} added as accessory product")
+    #
+    #         for acc in removed:
+    #             self.create_product_logs(log_id,relation_type='accessory',operation_type='remove',product=product,related_product=acc,
+    #                 message=f"Product {acc.display_name} removed from accessory product")
+    #
+    #         for acc in removed:
+    #             if product.id in acc.accessory_product_ids.ids:
+    #                 remaining_ids = acc.accessory_product_ids.ids.copy()
+    #                 remaining_ids.remove(product.id)
+    #                 acc.with_context(skip_accessory_sync=True).write({'accessory_product_ids': [(6, 0, remaining_ids)]})
+    #                 self.create_product_logs(log_id,relation_type='accessory',operation_type='remove',product=acc,related_product=product,
+    #                     message=f"Product {product.display_name} removed from accessory product")

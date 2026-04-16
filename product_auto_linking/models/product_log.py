@@ -94,7 +94,6 @@ class ProductRelationLogLine(models.Model):
     create_date = fields.Datetime("Created On")
 
     def create_log_line(self,log,relation_type,operation_type,product,related_product,message=None,is_error=False):
-        print('hello')
         return self.create({
             'log_id': log.id,
             'relation_type': relation_type,

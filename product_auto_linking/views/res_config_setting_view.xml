@@ -14,12 +14,7 @@
                         <setting id="alternative_product_selection"
                                  title="Alternative Product Based On Selection"
                                  help="Choose how alternative products should be suggested based on selected criteria.">
-                            <field name="alternative_product_rule"/>
-                        </setting>
-                        <setting id="accessories_product_selection"
-                                 title="Accessories Product Based On Selection"
-                                 help="Choose how accessories products should be suggested based on selected criteria.">
-                            <field name="accessory_product_rule"/>
+                            <field name="alternative_product_rule_ids" widget="many2many_tags" domain="[('rule_type', 'in', ('alternative', 'both'))]"/>
                         </setting>
                     </block>
                 </app>

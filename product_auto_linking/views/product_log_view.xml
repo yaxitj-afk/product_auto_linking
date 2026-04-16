@@ -162,7 +162,7 @@
     <menuitem id="menu_product_log_root"
               name="Product Log History"
               parent="stock.menu_stock_inventory_control"
-              sequence="101"/>
+              sequence="120"/>
 
     <!-- CHILD MENUS -->
     <menuitem id="menu_product_log"
