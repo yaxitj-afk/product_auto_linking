@@ -87,13 +87,13 @@ class ProductRelationLogLine(models.Model):
         string="Related Product"
     )
 
-    is_error = fields.Boolean("Error")
+    # is_error = fields.Boolean("Error")
 
     message = fields.Char("Message")
 
     create_date = fields.Datetime("Created On")
 
-    def create_log_line(self,log,relation_type,operation_type,product,related_product,message=None,is_error=False):
+    def create_log_line(self,log,relation_type,operation_type,product,related_product,message=None):
         return self.create({
             'log_id': log.id,
             'relation_type': relation_type,
@@ -101,5 +101,4 @@ class ProductRelationLogLine(models.Model):
             'product_id': product.id,
             'related_product_id': related_product.id,
             'message': message,
-            'is_error': is_error,
         })

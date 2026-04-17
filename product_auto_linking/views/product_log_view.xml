@@ -7,7 +7,7 @@
             <field name="name">product.log.vts.list</field>
             <field name="model">product.log.vts</field>
             <field name="arch" type="xml">
-                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'">
+                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'" create="false">
                     <field name="name"/>
                     <field name="relation_type"/>
                     <field name="operation_type"/>
@@ -47,7 +47,6 @@
                                         <field name="operation_type"/>
                                         <field name="product_id"/>
                                         <field name="related_product_id"/>
-<!--                                        <field name="is_error"/>-->
                                         <field name="message"/>
                                     </list>
 
@@ -61,7 +60,6 @@
                                                     <field name="related_product_id"/>
                                                 </group>
                                                 <group>
-                                                    <field name="is_error"/>
                                                     <field name="message"/>
                                                 </group>
                                             </group>
@@ -72,7 +70,6 @@
                             </page>
                         </notebook>
                     </sheet>
-<!--                    <chatter reload_on_post="True"/>-->
                 </form>
             </field>
         </record>
@@ -82,13 +79,12 @@
             <field name="name">product.log.line.vts.tree</field>
             <field name="model">product.log.line.vts</field>
             <field name="arch" type="xml">
-                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'">
+                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'" create="false">
                     <field name="log_id"/>
                     <field name="relation_type"/>
                     <field name="operation_type"/>
                     <field name="product_id"/>
                     <field name="related_product_id"/>
-                    <field name="is_error"/>
                     <field name="message"/>
                     <field name="create_date"/>
                 </list>
@@ -111,7 +107,6 @@
                             <group>
                                 <field name="product_id"/>
                                 <field name="related_product_id"/>
-                                <field name="is_error"/>
                                 <field name="message"/>
                             </group>
                         </group>
@@ -137,7 +132,7 @@
             <field name="name">Log Line</field>
             <field name="res_model">product.log.line.vts</field>
             <field name="view_mode">list,form</field>
-            <field name="domain">[('is_error', '=', True)]</field>
+            <field name="domain">[]</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Error logs will display here

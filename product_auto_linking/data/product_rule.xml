@@ -31,11 +31,5 @@
             <field name="rule_type">both</field>
         </record>
 
-        <record id="bom_product_rule" model="product.rule.vts">
-            <field name="name">Bill of Materials</field>
-            <field name="code">bom</field>
-            <field name="rule_type">accessory</field>
-        </record>
-
     </data>
 </odoo>
