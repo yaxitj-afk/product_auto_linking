@@ -11,7 +11,7 @@
     'description': "",
 
     # Dependencies
-    'depends': ['stock','sale','mrp'],
+    'depends': ['stock','website_sale'],
 
     # Views
     'data': [

@@ -8,9 +8,12 @@ class ProductBrandVTS(models.Model):
         string="Name",
         help="Name of the Brand"
     )
+
     short_description = fields.Text(
-        string="Short Description"
+        string="Short Description",
+        help="Add Shot description of the Brand Name"
     )
+
     detailed_description = fields.Html(
         string="Detailed Description",
         help="Detailed description of Brand"
@@ -19,5 +22,5 @@ class ProductBrandVTS(models.Model):
     product_tmpl_ids = fields.One2many(
         'product.template',
         'product_brand_id',
-        string="Product"
+        string="Product",
     )

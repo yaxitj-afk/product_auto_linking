@@ -9,15 +9,18 @@ class ProductAccessoryMapping(models.Model):
     category_id = fields.Many2one(
         'product.category',
         string="Main Category",
-        required=True
+        required=True,
+        help="Select Main Product Category"
     )
 
     accessory_category_ids = fields.Many2many(
         'product.category',
-        string="Accessory Categories"
+        string="Accessory Categories",
+        help="Adding Accessories Category for the product"
     )
 
     accessory_product_rule_ids = fields.Many2many(
         'product.rule.vts',
-        string="Accessory Rules"
+        string="Accessory Rules",
+        help="Add multiple rule as per product accessories"
     )

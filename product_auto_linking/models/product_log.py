@@ -15,9 +15,9 @@ class ProductRelationLog(models.Model):
     ], string="Relation Type")
 
     operation_type = fields.Selection([
-        ('create', 'Create'),
+        # ('create', 'Create'),
         ('update', 'Update'),
-        ('delete', 'Delete')
+        # ('delete', 'Delete')
     ], string="Operation")
 
     product_id = fields.Many2one('product.template', string="Main Product")
@@ -79,7 +79,7 @@ class ProductRelationLogLine(models.Model):
 
     product_id = fields.Many2one(
         'product.template',
-        string="Main Product"
+        string="Product"
     )
 
     related_product_id = fields.Many2one(

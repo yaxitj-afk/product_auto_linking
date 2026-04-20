@@ -1,5 +1,6 @@
 <odoo>
     <data>
+         <!-- PRODUCT ACCESSORIES TREE VIEW -->
         <record id="view_product_accessory_category_list" model="ir.ui.view">
             <field name="name">product.accessory.category.list</field>
             <field name="model">product.accessory.vts</field>
@@ -14,11 +15,14 @@
             </field>
         </record>
 
+        <!--  ACTION  -->
         <record id="action_product_accessory_vts" model="ir.actions.act_window">
             <field name="name">Accessory Categories</field>
             <field name="res_model">product.accessory.vts</field>
             <field name="view_mode">list,form</field>
         </record>
+
+         <!-- MENUITEM -->
         <menuitem id="menu_product_accessory_vts"
                   name="Accessory Categories"
                   parent="stock.menu_stock_inventory_control"
