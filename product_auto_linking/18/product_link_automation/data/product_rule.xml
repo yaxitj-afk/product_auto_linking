@@ -1,6 +1,5 @@
 <odoo>
     <data>
-
         <record id="product_rule_price_vts" model="product.rule.vts">
             <field name="name">Similar Price</field>
             <field name="code">price</field>
@@ -30,6 +29,5 @@
             <field name="code">tags</field>
             <field name="rule_type">both</field>
         </record>
-
     </data>
 </odoo>

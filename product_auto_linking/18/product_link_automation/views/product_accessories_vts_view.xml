@@ -10,7 +10,7 @@
                     <field name="accessory_category_ids"
                            widget="many2many_tags"/>
                     <field name="accessory_product_rule_ids"
-                           widget="many2many_tags" domain="[('rule_type', 'in', ('accessory', 'both'))]"/>
+                           widget="many2many_tags" domain="[('rule_type', 'in', ('accessory', 'both'))]" options="{'no_create': True, 'no_create_edit': True}"/>
                 </list>
             </field>
         </record>

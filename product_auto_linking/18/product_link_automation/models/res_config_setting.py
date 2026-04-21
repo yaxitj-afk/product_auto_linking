@@ -11,12 +11,12 @@ class ResConfigSettings(models.TransientModel):
 
     def set_values(self):
         super().set_values()
-        self.env['ir.config_parameter'].sudo().set_param('product_auto_linking.alternative_product_rule_ids',
+        self.env['ir.config_parameter'].sudo().set_param('product_link_automation.alternative_product_rule_ids',
             json.dumps(self.alternative_product_rule_ids.ids))
     #
     def get_values(self):
         res = super().get_values()
-        param = self.env['ir.config_parameter'].sudo().get_param('product_auto_linking.alternative_product_rule_ids','[]')
+        param = self.env['ir.config_parameter'].sudo().get_param('product_link_automation.alternative_product_rule_ids','[]')
         ids = json.loads(param)
         res.update(alternative_product_rule_ids=[(6, 0, ids)])
         return res

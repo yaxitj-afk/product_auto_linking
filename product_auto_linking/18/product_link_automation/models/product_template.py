@@ -48,7 +48,7 @@ class ProductTemplate(models.Model):
     @api.constrains('list_price', 'categ_id','attribute_line_ids','product_brand_id','product_tag_ids','company_id')
     def _compute_alternative_products(self):
         alternate_rule = self.env['ir.config_parameter'].sudo().get_param(
-            'product_auto_linking.alternative_product_rule_ids', '[]'
+            'product_link_automation.alternative_product_rule_ids', '[]'
         )
         alternate_rule_ids = json.loads(alternate_rule)
 
@@ -255,6 +255,8 @@ class ProductTemplate(models.Model):
         ])
         for rule in rules:
             if product.categ_id.id not in rule.accessory_category_ids.ids:
+                main_products.with_context(skip_accessory_sync=True).write({
+                    'accessory_product_ids': [(3, product_variant_id)]})
                 continue
             domain = [('id', '!=', product.id),('categ_id','=',rule.category_id.id)]
 

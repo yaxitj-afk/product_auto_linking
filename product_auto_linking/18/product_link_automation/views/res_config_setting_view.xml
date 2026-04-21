@@ -7,9 +7,9 @@
         <field name="inherit_id" ref="sale.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Auto Linking Product"
-                     string="Auto Product Linking"
-                     name="product_auto_linking">
+                <app data-string="Alternate Product Link"
+                     string="Alternate Product Linking"
+                     name="product_link_automation">
                     <block title="Alternative and Accessory of Product" name="alternative_product_selection_block">
                         <setting id="alternative_product_selection"
                                  title="Alternative Product Based On Selection"
