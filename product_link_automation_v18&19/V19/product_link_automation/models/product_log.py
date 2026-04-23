@@ -1,4 +1,5 @@
 from odoo import models, fields, api
+from datetime import datetime, timedelta
 
 
 class ProductRelationLog(models.Model):
@@ -47,6 +48,15 @@ class ProductRelationLog(models.Model):
             'message': message,
         })
 
+    def unlink_log_books(self):
+        """
+        Remove printjobs older than `older_than` days ago
+        """
+        days_ago = datetime.now() - timedelta(days=15)
+
+        log_id = self.search([('create_date', '<', days_ago)])
+        log_id.unlink()
+
 
 class ProductRelationLogLine(models.Model):
     _name = 'product.log.line.vts'
@@ -79,8 +89,6 @@ class ProductRelationLogLine(models.Model):
         'product.template',
         string="Related Product"
     )
-
-    # is_error = fields.Boolean("Error")
 
     message = fields.Char("Message")
 

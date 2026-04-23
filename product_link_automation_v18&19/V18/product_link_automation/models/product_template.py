@@ -1,8 +1,6 @@
 from odoo import models, api, fields
 import json
 
-from odoo.tools.cache import log_ormcache_stats
-
 
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
@@ -147,7 +145,7 @@ class ProductTemplate(models.Model):
 
         return True
 
-    @api.constrains('list_price', 'categ_id', 'attribute_line_ids','product_brand_id', 'product_tag_ids', 'company_id')
+    @api.constrains('list_price', 'categ_id', 'qty_available','attribute_line_ids','product_brand_id', 'product_tag_ids', 'company_id')
     def _compute_alternative_products(self):
 
         main_rule_codes, other_rule_codes = self._get_alternative_rules()
@@ -164,13 +162,11 @@ class ProductTemplate(models.Model):
                 product.alternative_product_ids = [(5, 0, 0)]
                 self._remove_from_other_alternatives(product)
                 continue
-# -------------------------------------------------------------------------------------------------------------------------------------
             domain = self._get_base_domain(product)
 
             domain = self._apply_main_rules(domain, product, main_rule_codes)
             if domain is None:
                 continue
-# -------------------------------------------------------------------------------------------------------------------------------------
             if other_rule_codes:
                 domain = self._apply_other_rules(domain, product, other_rule_codes)
 
@@ -185,7 +181,6 @@ class ProductTemplate(models.Model):
 
             product.alternative_product_ids = [(6, 0, alternative_products.ids)]
 
-            # --- LOGIC REMAINS SAME ---
             new_alternatives = product.alternative_product_ids
 
             added = new_alternatives - old_alternatives
@@ -202,11 +197,8 @@ class ProductTemplate(models.Model):
                     # REVERSE SYNC + LOG
                     if product.id not in alt.alternative_product_ids.ids:
                         alt.write({'alternative_product_ids': [(4, product.id)]})
-                        self.create_product_logs(
-                            log_id, 'alternative', 'add',
-                            alt, product,
-                            f"Product {product.display_name} added as alternative product"
-                        )
+                        self.create_product_logs(log_id, 'alternative', 'add',
+                            alt, product,f"Product {product.display_name} added as alternative product")
 
                 for alt in removed:
                     self.create_product_logs(log_id, 'alternative', 'remove',
@@ -275,79 +267,89 @@ class ProductTemplate(models.Model):
 
         for product in self:
 
-            matched_rule = next(
-                (r for r in accessory_rules if r.category_id.id == product.categ_id.id),
-                False
-            )
+            all_matched_rules = accessory_rules.filtered(lambda r:
+                                                         product.categ_id.id == r.category_id.id
+                                                         or product.categ_id.id in r.accessory_category_ids.ids)
+            if not all_matched_rules:
+                all_products = self.env['product.template'].sudo().search([
+                    ('accessory_product_ids', 'in', product.product_variant_id.id)
+                ])
+                if all_products:
+                    all_products.write({
+                        'accessory_product_ids': [(3, product.product_variant_id.id)]
+                    })
 
-            if not matched_rule:
-                product._update_product_accessory(product, accessory_rules)
-                continue
+            for matched_rule in all_matched_rules:
+                matched_rule.filtered(lambda r: r.category_id.id == product.categ_id.id)
 
-            accessory_category_ids = matched_rule.accessory_category_ids.ids
+                if matched_rule and matched_rule.accessory_category_ids.id == product.categ_id.id:
+                    product._update_product_accessory(product, matched_rule)
+                    continue
 
-            # No categories → clear
-            if not accessory_category_ids:
-                product.accessory_product_ids = [(5, 0, 0)]
-                continue
+                accessory_category_ids = matched_rule.accessory_category_ids.ids
 
-            # Rule codes
-            rule_codes = matched_rule.accessory_product_rule_ids.mapped('code')
+                # No categories → clear
+                if not accessory_category_ids:
+                    product.accessory_product_ids = [(5, 0, 0)]
+                    continue
 
-            if 'in_stock' in rule_codes and product.qty_available <= 0:
-                product.accessory_product_ids = [(5, 0, 0)]
-                self._remove_from_other_accessories(product, matched_rule)
-                continue
+                # Rule codes
+                rule_codes = matched_rule.accessory_product_rule_ids.mapped('code')
 
-            # Base domain
-            domain = [
-                ('categ_id', 'in', accessory_category_ids),
-                ('sale_ok', '=', True),
-                ('active', '=', True),
-                ('id', '!=', product.id),
-                ('company_id', '=', product.company_id.id)
-            ]
+                if 'in_stock' in rule_codes and product.qty_available <= 0:
+                    product.accessory_product_ids = [(5, 0, 0)]
+                    self._remove_from_other_accessories(product, matched_rule)
+                    continue
 
-            # Apply dynamic rules
-            domain = self._apply_accessory_rules(product,matched_rule.accessory_product_rule_ids,domain)
+                # Base domain
+                domain = [
+                    ('categ_id', 'in', accessory_category_ids),
+                    ('sale_ok', '=', True),
+                    ('active', '=', True),
+                    ('id', '!=', product.id),
+                    ('company_id', '=', product.company_id.id)
+                ]
 
-            is_product_valid = self._valid_product(product,matched_rule)
-            if not is_product_valid:
-                product.accessory_product_ids = [(5, 0, 0)]
-                continue
+                # Apply dynamic rules
+                domain = self._apply_accessory_rules(product,matched_rule.accessory_product_rule_ids,domain)
 
-            accessory_products = Product.search(domain)
-            variants = accessory_products.mapped('product_variant_id').exists()
+                is_product_valid = self._valid_product(product,matched_rule)
+                if not is_product_valid:
+                    product.accessory_product_ids = [(5, 0, 0)]
+                    continue
 
-            old_ids = product.accessory_product_ids.product_tmpl_id.ids
-            product.accessory_product_ids = [(6, 0, variants.ids)]
+                accessory_products = Product.search(domain)
+                variants = accessory_products.mapped('product_variant_id').exists()
 
-            new_ids = accessory_products.ids
+                old_ids = product.accessory_product_ids.product_tmpl_id.ids
+                product.accessory_product_ids = [(6, 0, variants.ids)]
 
-            added = list(set(new_ids) - set(old_ids))
-            removed = list(set(old_ids) - set(new_ids))
+                new_ids = accessory_products.ids
 
-            if added or removed:
-                log_id = self.env['product.log.vts'].generate_log(relation_type='accessory',
-                    product=product,message='Accessory products updated')
+                added = list(set(new_ids) - set(old_ids))
+                removed = list(set(old_ids) - set(new_ids))
 
-                # ADD
-                for acc in self.env['product.template'].browse(added):
-                    self.create_product_logs(log_id, 'accessory', 'add',
-                        product, acc,f"Product {acc.display_name} added as accessory product")
+                if added or removed:
+                    log_id = self.env['product.log.vts'].generate_log(relation_type='accessory',
+                        product=product,message='Accessory products updated')
 
-                # REMOVE (rule scoped)
-                for acc in self.env['product.template'].browse(removed):
-                    self._remove_from_other_accessories(acc, matched_rule)
+                    # ADD
+                    for acc in self.env['product.template'].browse(added):
+                        self.create_product_logs(log_id, 'accessory', 'add',
+                            product, acc,f"Product {acc.display_name} added as accessory product")
 
-                    self.create_product_logs(log_id, 'accessory', 'remove',
-                        product, acc,f"Product {acc.display_name} removed from accessory product")
+                    # REMOVE (rule scoped)
+                    for acc in self.env['product.template'].browse(removed):
+                        self._remove_from_other_accessories(acc, matched_rule)
+
+                        self.create_product_logs(log_id, 'accessory', 'remove',
+                            product, acc,f"Product {acc.display_name} removed from accessory product")
 
     # ----------------------------------------------------------------------------------------------------------
-    # Reverse Sync (CRITICAL PART)
+    # Reverse Updates (this below method only calls when changes made in the accessories)
     # ----------------------------------------------------------------------------------------------------------
 
-    def _update_product_accessory(self, product, rules):
+    def _update_product_accessory(self, product, rule):
 
         """this method is changed occured in the accessories product"""
 
@@ -357,112 +359,57 @@ class ProductTemplate(models.Model):
         if not product_variant_id:
             return
 
-        for rule in rules:
+        #  Products that currently have this accessory
+        main_products = Product.search([
+            ('accessory_product_ids', 'in', product_variant_id),
+            ('categ_id', '=', rule.category_id.id),
+            ('company_id', '=', product.company_id.id)
+        ])
 
-            # 🔹 Products that currently have this accessory
-            main_products = Product.search([
-                ('accessory_product_ids', 'in', product_variant_id),
-                ('categ_id', '=', rule.category_id.id),
-                ('company_id', '=', product.company_id.id)
-            ])
+        #  If product no longer valid for this rule → remove everywhere
+        if product.categ_id.id not in rule.accessory_category_ids.ids:
+            main_products.write({'accessory_product_ids': [(3, product_variant_id)]})
+            return
 
-            # 🔹 If product no longer valid for this rule → remove everywhere
-            if product.categ_id.id not in rule.accessory_category_ids.ids:
-                main_products.write({
+        #  Rule codes (brand, tags, in_stock)
+        rule_codes = rule.accessory_product_rule_ids.mapped('code')
+
+        # if product does not found according to the rule and rule than remove current product from main product
+        if (('brand' in rule_codes and not product.product_brand_id)
+            or ('tags' in rule_codes and not product.product_tag_ids)
+            or ('in_stock' in rule_codes and product.qty_available <= 0)):
+            main_products.write({
+                'accessory_product_ids': [(3, product_variant_id)]
+            })
+            return
+
+        #  BASE DOMAIN
+        domain = [
+            ('id', '!=', product.id),
+            ('categ_id', '=', rule.category_id.id),
+            ('sale_ok', '=', True),
+            ('active', '=', True),
+            ('company_id', '=', product.company_id.id)
+        ]
+
+        #  Apply dynamic rules
+        domain = self._apply_accessory_rules(product,rule.accessory_product_rule_ids,domain)
+
+        # Products that should have this accessory
+        product_search = Product.search(domain)
+
+        to_remove = main_products - product_search
+
+        for rec in to_remove:
+            if product_variant_id in rec.accessory_product_ids.ids:
+                rec.write({
                     'accessory_product_ids': [(3, product_variant_id)]
                 })
-                continue
 
-            # 🔹 Rule codes (brand, tags, in_stock)
-            rule_codes = rule.accessory_product_rule_ids.mapped('code')
+        to_add = product_search - main_products
 
-            # STRICT VALIDATION (important for your bug cases)
-            if (
-                    ('brand' in rule_codes and not product.product_brand_id)
-                    or ('tags' in rule_codes and not product.product_tag_ids)
-                    or ('in_stock' in rule_codes and product.qty_available <= 0)
-            ):
-                main_products.write({
-                    'accessory_product_ids': [(3, product_variant_id)]
+        for rec in to_add:
+            if product_variant_id not in rec.accessory_product_ids.ids:
+                rec.write({
+                    'accessory_product_ids': [(4, product_variant_id)]
                 })
-                continue
-
-            # 🔹 BASE DOMAIN (VERY IMPORTANT - you missed this)
-            domain = [
-                ('id', '!=', product.id),
-                ('categ_id', '=', rule.category_id.id),
-                ('sale_ok', '=', True),
-                ('active', '=', True),
-                ('company_id', '=', product.company_id.id)
-            ]
-
-            # 🔹 Apply dynamic rules
-            domain = self._apply_accessory_rules(
-                product,
-                rule.accessory_product_rule_ids,
-                domain
-            )
-
-            # 🔹 Products that SHOULD have this accessory
-            product_search = Product.search(domain)
-
-            # -------------------------
-            # REMOVE (extra ones)
-            # -------------------------
-            to_remove = main_products - product_search
-
-            for rec in to_remove:
-                if product_variant_id in rec.accessory_product_ids.ids:
-                    rec.write({
-                        'accessory_product_ids': [(3, product_variant_id)]
-                    })
-
-            # -------------------------
-            # ADD (missing ones)
-            # -------------------------
-            to_add = product_search - main_products
-
-            for rec in to_add:
-                if product_variant_id not in rec.accessory_product_ids.ids:
-                    rec.write({
-                        'accessory_product_ids': [(4, product_variant_id)]
-                    })
-
-
-
-
-
-        # for rule in rules:
-        #     if product.categ_id.id not in rule.accessory_category_ids.ids:
-        #         main_products.write({
-        #             'accessory_product_ids': [(3, product_variant_id)]})
-        #         continue
-        #     domain = [('id', '!=', product.id), ('categ_id', '=', rule.category_id.id)]
-        #
-        #     filter_domain = product._apply_accessory_rules(product, rule.accessory_product_rule_ids, domain)
-        #
-        #     accessory_products = Product.search(filter_domain)
-        #     allowed_ids = accessory_products.ids
-        #
-        #     # Removing Accessories from the main product
-        #     log_id = False
-        #     if main_products or accessory_products:
-        #         log_id = self.env['product.log.vts'].generate_log(relation_type='accessory',
-        #                                                           product=product, message='Accessory products updated')
-        #     for main in main_products:
-        #         if main.id not in allowed_ids:
-        #             main.write({'accessory_product_ids': [(3, product_variant_id)]})
-        #
-        #             self.create_product_logs(
-        #                 log_id, 'accessory', 'remove', main, product,
-        #                 message=f"Product {product.display_name} removed from accessory product")
-
-            # Adding Accessories in the main product
-            # for acc in accessory_products:
-            #     acc_ids = acc.accessory_product_ids.ids
-            #     if product_variant_id not in acc_ids:
-            #         acc.write({
-            #             'accessory_product_ids': [(4, product_variant_id)]
-            #         })
-            #         self.create_product_logs(log_id, 'accessory', 'add', acc, product,
-            #                                  message=f"Product {product.display_name} added as accessory product")

@@ -1,0 +1,51 @@
+Alternate Product Linking
+
+1.png :- 
+-> Our module provides an additional feature for managing product brands, allowing you to create a product brand by following the path: Inventory → Products → Product Brand.
+
+2.png
+-> A product brand is created with its description and complete brand details available for reference.
+
+3.png
+-> In the Product tab, you can view all products associated with the same brand, along with their detailed information.
+
+4.png 
+-> To enable the auto alternate product linking feature, go to Settings → Alternate Product Linking.
+-> In alternative rule you can select the alternate product rule by which you ahve to add alternate product. you can categorised by category or brand as per your choice
+-> Using additional rules, you can filter products based on criteria such as similar price, matching tags, shared attributes, or availability in stock.
+-> When you filter alternate products by price, you get the option to define minimum and maximum price deviation, allowing you to include only products within a specific price range.
+
+-> Currently, We are adding two main rules (brand and category) and two additional rules (attributes and price) are being applied. 
+
+5.png
+-> Here, We have a product named Samsung S23 which has Category and Product Brand 
+
+6.png 
+-> The product includes attributes such as brand, color, and other smartphone characteristics. Based on these attributes, alternate products can be selected. If a matching product is found according to the rules defined in the settings, it will be linked as an alternate product to the current item, and the relationship will apply in both directions.
+
+7.png
+-> A product with the same brand and category is identified here. If it satisfies all the rules configured at the settings level such as attributes, price range, tags, and other conditions it will be linked as an alternate product to the previous product (Samsung S23).
+
+8.png
+-> The smartphone’s attributes are also defined here. If attributes are included in the rule, at least 50% of them must match for a product to be linked as an alternate.
+
+9.png 
+-> Once the changes are saved, the product is automatically linked with matching alternate products based on the defined rules. For example, the product Samsung S24 is automatically linked with Samsung S23 as an alternate product. 
+
+10.png
+-> The linking is bidirectional, so Samsung S24 is also set as an alternate product for Samsung S23.
+
+11.png 
+-> To track all operations, a logbook feature is provided that records and displays all relevant information. To view the logs, navigate to Inventory → Products → Product Log History → Log Book, where you can see all the details related to these operations.
+
+12.png
+-> A complete history of all operations is maintained, showing which products were added as alternates and which were removed.
+
+13.png and 13.1.png
+-> Not only during product creation, but also when a product is updated—if it no longer meets the defined rules, the corresponding alternate product links are automatically removed, and the same applies in reverse.
+
+14.png,15
+-> Now, let’s look at the reverse logic: if the price of Samsung S24 is increased, it will no longer meet the defined rules and will be removed as an alternate product from both products.
+
+15.png
+-> Here you cans ee the detaield log of the remove operation of the product in which samsung s24 and samsung s23 both remove as alternate profduct

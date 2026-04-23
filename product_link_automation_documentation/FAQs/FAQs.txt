@@ -1,0 +1,29 @@
+FAQs :- 
+
+
+How are products matched?
+Products are matched using conditions like category, brand, tags, attributes, and stock availability.
+
+Can I control how products are linked?
+Yes, you can fully control the linking logic by configuring rules based on your business needs.
+
+Does it work for large product catalogs?
+Yes, the module is designed to handle large and growing product catalogs efficiently.
+
+Is it useful for eCommerce?
+Yes, it improves product suggestions on your website, helping customers discover alternatives and accessories.
+
+Do I need technical knowledge to use this module?
+No, the module is user-friendly and can be configured easily without technical expertise.
+
+Can I track changes made by the system?
+Yes, all changes are tracked, so you can see what was added or removed.
+
+What happens if product data changes frequently?
+The module automatically adjusts links to keep them accurate and relevant.
+
+Who is the point of contact for technical support or bug-related queries?
+You can reach us via support@vrajatechnologies.com
+
+Can I get a demo of the module before making a purchase?
+Yes, to test this module, please contact us at sales@vrajatechnologies.com.

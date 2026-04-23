@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 {
     # App information
-    'name': 'Product Alternate & Accessory Product Management Automation',
+    'name': 'Product Alternate & Accessory Management Automation',
     'category': 'Website',
-    'version': '18.0.1.0',
+    'version': '19.0.1.0',
     'summary': """  
                 The Smart Product Relationship Automation module transforms how alternative and accessory products are managed in Odoo by eliminating manual linking and replacing it with rule-based automation.
                 Instead of manually assigning alternatives and accessories for every product, this module automatically builds product relationships using configurable business logic. It evaluates product attributes such as category, brand, tags, attributes, and real-time stock availability to intelligently identify the most relevant products.
@@ -33,6 +33,7 @@
     # Views
     'data': [
         'data/product_rule.xml',
+        'data/ir_cron.xml',
         'security/ir.model.access.csv',
         'views/product_template_view.xml',
         'views/product_brand_vts_view.xml',
