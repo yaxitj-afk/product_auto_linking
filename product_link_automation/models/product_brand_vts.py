@@ -6,12 +6,12 @@ class ProductBrandVTS(models.Model):
 
     name = fields.Char(
         string="Name",
-        help="Name of the Brand"
+        help="Name of the Product Brand"
     )
 
     short_description = fields.Text(
         string="Short Description",
-        help="Add Shot description of the Brand Name"
+        help="Shot description of the Brand"
     )
 
     detailed_description = fields.Html(

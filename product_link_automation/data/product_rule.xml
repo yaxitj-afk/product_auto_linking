@@ -1,5 +1,11 @@
 <odoo>
     <data>
+        <record id="product_rule_categories" model="product.rule.vts">
+            <field name="name">Same Categories</field>
+            <field name="code">category</field>
+            <field name="rule_type">alternative</field>
+        </record>
+
         <record id="product_rule_price_vts" model="product.rule.vts">
             <field name="name">Similar Price</field>
             <field name="code">price</field>

@@ -14,12 +14,6 @@ class ProductRelationLog(models.Model):
         ('accessory', 'Accessory Product')
     ], string="Relation Type")
 
-    operation_type = fields.Selection([
-        # ('create', 'Create'),
-        ('update', 'Update'),
-        # ('delete', 'Delete')
-    ], string="Operation")
-
     product_id = fields.Many2one('product.template', string="Main Product")
 
     company_id = fields.Many2one(
@@ -46,10 +40,9 @@ class ProductRelationLog(models.Model):
             ) or '/'
         return super().create(vals)
 
-    def generate_log(self, relation_type, operation_type, product, message=None):
+    def generate_log(self, relation_type, product, message=None):
         return self.create({
             'relation_type': relation_type,
-            'operation_type': operation_type,
             'product_id': product.id,
             'message': message,
         })

@@ -16,7 +16,7 @@ class ProductAccessoryMapping(models.Model):
     accessory_category_ids = fields.Many2many(
         'product.category',
         string="Accessory Categories",
-        help="Adding Accessories Category for the product"
+        help="Accessories Category for the product"
     )
 
     accessory_product_rule_ids = fields.Many2many(

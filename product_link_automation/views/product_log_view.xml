@@ -7,10 +7,9 @@
             <field name="name">product.log.vts.list</field>
             <field name="model">product.log.vts</field>
             <field name="arch" type="xml">
-                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'" create="false">
+                <list create="false">
                     <field name="name"/>
                     <field name="relation_type"/>
-                    <field name="operation_type"/>
                     <field name="product_id"/>
                     <field name="message"/>
                     <field name="create_date"/>
@@ -29,10 +28,10 @@
                             <group>
                                 <field name="name"/>
                                 <field name="relation_type"/>
-                                <field name="operation_type"/>
+                                <field name="product_id"/>
                             </group>
                             <group>
-                                <field name="product_id"/>
+
                                 <field name="company_id"/>
                                 <field name="create_date"/>
                                 <field name="message"/>
@@ -42,7 +41,8 @@
                         <notebook>
                             <page string="Log Lines">
                                 <field name="log_line_ids" readonly="1">
-                                    <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'">
+                                    <list decoration-danger="operation_type == 'remove'"
+                                          decoration-success="operation_type == 'add'">
                                         <field name="relation_type"/>
                                         <field name="operation_type"/>
                                         <field name="product_id"/>
@@ -79,7 +79,8 @@
             <field name="name">product.log.line.vts.tree</field>
             <field name="model">product.log.line.vts</field>
             <field name="arch" type="xml">
-                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'" create="false">
+                <list decoration-danger="operation_type == 'remove'" decoration-success="operation_type == 'add'"
+                      create="false">
                     <field name="log_id"/>
                     <field name="relation_type"/>
                     <field name="operation_type"/>
